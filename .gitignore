@@ -1,4 +1,13 @@
 #################
+## Project
+#################
+target
+project/project
+project/target
+core/target
+.history
+UNABLE TO INITIALIZE LICENSING - NO LICENSE FOUND.err
+#################
 ## Eclipse
 #################
 

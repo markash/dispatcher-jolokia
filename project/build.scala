@@ -12,14 +12,16 @@ object Build extends Build {
 		scalaVersion := "2.10.0",
 		libraryDependencies <++= (dispatchVersion) { (dv) => Seq(
 			"net.databinder.dispatch" %% "dispatch-core" % dv,
-			"net.databinder.dispatch" %% "dispatch-json4s-native" % dv
+			"net.databinder.dispatch" %% "dispatch-json4s-native" % dv,
+			"net.databinder.dispatch" %% "dispatch-json4s-jackson" % dv
 		)},
-		libraryDependencies <+= (scalaVersion) {
+		/*libraryDependencies <+= (scalaVersion) {
 			case "2.9.3" => "org.spec2" %% "spec2" % "1.12.4.1" % "test"
 			case _ => "org.spec2" %% "spec2" % "1.14" % "test"
-		},
+		},*/
 		crossScalaVersions := Seq("2.10.1"),
-		resolvers += "sonatype-public" at "http://oss.sonatype.org/content/repositories/public"
+		resolvers += "repo-prox" at "http://vt01ecs02.tb01.test.jse.co.za:9092/nexus/content/groups/public"
+
 	)
 
 	lazy val coreSettings = buildSettings ++ Seq(
