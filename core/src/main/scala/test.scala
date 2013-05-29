@@ -1,52 +1,49 @@
 package jolokia.test
 
 import dispatch._
-import Defaults._
 import org.json4s._
-import org.json4s.native.JsonMethods._
-import jolokia.request._
-import java.util.Date
 
-//(
+object Search extends Parse {
+	val statuses = 'statuses.![List[JValue]]
+	val search_metadata = 'search_metadata.![JObject]
+}
 
-case class ObjectName(domain: String, properties: Map[String, String])
 
-object ObjectName {
-	def parse(value: String): ObjectName = {
-		/* Split the JMX name into parts [domain][prop-key][prop-val][prop-key][prop-val]...[n-key][n-val] */
-		val items: Array[String] = value.split(Array(':', ',', '='))
-		/* First item is domain */
-		val name = items(0)
-		val p: Array[String] = items.drop(1)
-		/* Pair up items into a tuple2 so that toMap can convert it to a Map[String, String] */
-		val iter = for {group <- p.sliding(2, 2)  } yield (group(0), group(1))
-		val properties: Map[String, String] = iter toMap
-		
-		ObjectName(name, properties)
+trait ReadJs[A] {
+	import ReadJs.=>?
+	val readJs: JValue =>? A
+}
+
+object ReadJs {
+	type =>?[-A, +B] = PartialFunction[A, B]
+	def readJs[A](pf: JValue =>? A): ReadJs[A] = new ReadJs[A] {
+		val readJs = pf
+	}
+
+	implicit val listRead:   ReadJs[List[JValue]] =  	readJs { case JArray(v) => v }
+	implicit val objectRead: ReadJs[JObject] = 			readJs { case JObject(v) => JObject(v) }
+	implicit val bigIntRead: ReadJs[BigInt] =  			readJs { case JInt(v) => v }
+	implicit val intRead:    ReadJs[Int] =     			readJs { case JInt(v) => v.toInt }
+	implicit val stringRead: ReadJs[String] = 			readJs { case JString(v) => v }
+	implicit val boolRead:   ReadJs[Boolean] = 			readJs { case JBool(v) => v }
+}
+
+trait Parse {
+	def parse[A: ReadJs](js: JValue): Option[A] = implicitly[ReadJs[A]].readJs.lift(js)
+	def parse_![A: ReadJs](js: JValue): A = parse(js).get
+	def parseField[A: ReadJs](key: String)(js: JValue): Option[A] = parse[A](js \ key)
+	def parseField_![A: ReadJs](key: String)(js: JValue): A = parseField(key)(js).get
+	implicit class SymOp(sym: Symbol) {
+		def apply[A: ReadJs]: JValue => Option[A] = parseField[A](sym.name)_
+		def ![A: ReadJs]: JValue => A = parseField_![A](sym.name)_
 	}
 }
 
-case class Request(mbean: String, requestType: String)
-
-case class SearchResponse(timestamp: Date, status: Int, request: Request, value: List[ObjectName]) {
-	def this(timestamp: BigInt, status: Int, request: Request, value: List[String]) = 
-		this(
-			new Date((1000L * timestamp).toLong), 
-			status, 
-			request, 
-			value.map(name => ObjectName.parse(name)))
+object Result extends Parse {
+	val timestamp = 'timestamp[BigInt]
+	val status = 'status[Int]
+	val request = 'request[JObject]
+	val value = 'value[List[JValue]]
 }
 
 
-object Test {
-	implicit val formats = DefaultFormats
-
-	def main(args: List[String]): SearchResponse = {
-		val http = new Http
-		val client = new AbstractClient("localhost", 7001)
-		val f = http(client(new Search("com.bea:*,Type=JMSDestinationRuntime")) OK as.json4s.Json)
-		val json = f() transformField { case ("type", x) => ("requestType", x) }
-		
-		json.extract[SearchResponse]
-	}
-}

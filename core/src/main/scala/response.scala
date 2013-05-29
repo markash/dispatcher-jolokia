@@ -1,48 +1,48 @@
 package jolokia.response
 
 import dispatch._
+import Defaults._
 import org.json4s._
+import org.json4s.native.JsonMethods._
+import jolokia.request._
+import java.util.Date
 
-object Search extends Parse {
-	val statuses = 'statuses.![List[JValue]]
-	val search_metadata = 'search_metadata.![JObject]
+case class Request(mbean: String, requestType: String)
+
+case class SearchResponse(timestamp: Date, status: Int, request: Request, value: List[ObjectName]) {
+	def this(timestamp: BigInt, status: Int, request: Request, value: List[String]) = 
+		this(
+			new Date((1000L * timestamp).toLong), 
+			status, 
+			request, 
+			value.map(name => ObjectName.parse(name)))
+}
+
+case class ReadResponse(timestamp: Date, status: Int, request: Request, value: Map[String, Any]) {
+	def this(timestamp: BigInt, status: Int, request: Request, value: JObject) = 
+		this(
+			new Date((1000L * timestamp).toLong), 
+			status, 
+			request, 
+			value.values)	
 }
 
 
-trait ReadJs[A] {
-	import ReadJs.=>?
-	val readJs: JValue =>? A
-}
+class Client(host: String, port: Int) {
+	implicit val formats = DefaultFormats
 
-object ReadJs {
-	type =>?[-A, +B] = PartialFunction[A, B]
-	def readJs[A](pf: JValue =>? A): ReadJs[A] = new ReadJs[A] {
-		val readJs = pf
+	val http = new Http
+	val client = new AbstractClient(host, port)
+
+	def search(query: String): SearchResponse = {
+		val f = http(client(new Search(query)) OK as.json4s.Json)
+		val json = f() transformField { case ("type", x) => ("requestType", x) }
+		json.extract[SearchResponse]
 	}
 
-	implicit val listRead:   ReadJs[List[JValue]] =  	readJs { case JArray(v) => v }
-	implicit val objectRead: ReadJs[JObject] = 			readJs { case JObject(v) => JObject(v) }
-	implicit val bigIntRead: ReadJs[BigInt] =  			readJs { case JInt(v) => v }
-	implicit val intRead:    ReadJs[Int] =     			readJs { case JInt(v) => v.toInt }
-	implicit val stringRead: ReadJs[String] = 			readJs { case JString(v) => v }
-	implicit val boolRead:   ReadJs[Boolean] = 			readJs { case JBool(v) => v }
-}
-
-trait Parse {
-	def parse[A: ReadJs](js: JValue): Option[A] = implicitly[ReadJs[A]].readJs.lift(js)
-	def parse_![A: ReadJs](js: JValue): A = parse(js).get
-	def parseField[A: ReadJs](key: String)(js: JValue): Option[A] = parse[A](js \ key)
-	def parseField_![A: ReadJs](key: String)(js: JValue): A = parseField(key)(js).get
-	implicit class SymOp(sym: Symbol) {
-		def apply[A: ReadJs]: JValue => Option[A] = parseField[A](sym.name)_
-		def ![A: ReadJs]: JValue => A = parseField_![A](sym.name)_
+	def read(objectName: ObjectName): ReadResponse = {
+		val f = http(client(new Read(objectName)) OK as.json4s.Json)
+		val json = f() transformField { case ("type", x) => ("requestType", x) }
+		json.extract[ReadResponse]
 	}
 }
-
-object Result extends Parse {
-	val timestamp = 'timestamp[BigInt]
-	val status = 'status[Int]
-	val request = 'request[JObject]
-	val value = 'value[List[JValue]]
-}
-
