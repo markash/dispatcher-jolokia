@@ -86,25 +86,27 @@ object ConvertToProduction extends (ReadResponse => Production) {
   }
 }
 
-object ConvertToJMSDestinationRuntime extends (ReadResponse => JMSDestinationRuntime) {
-	def apply(response: ReadResponse): JMSDestinationRuntime = {
-		new JMSDestinationRuntime(
-		    response.value("Name").asInstanceOf[String],
-		    response.value("Parent"),
-		    response.value("Paused").asInstanceOf[Boolean],
-		    response.value("State").asInstanceOf[String],
-		    response.value("DestinationType").asInstanceOf[String],
-		    response.value("DestinationInfo"),
-		    ConvertToMessages(response),
-		    ConvertToBytes(response),
-		    ConvertToConsumers(response),
-		    ConvertToConsumption(response),
-		    ConvertToInsertion(response),
-		    ConvertToProduction(response)
-		)
+object ConvertToJMSDestinationRuntime extends (ReadResponse => Either[String, JMSDestinationRuntime]) {
+	def apply(response: ReadResponse): Either[String, JMSDestinationRuntime] = response.status match {
+	  
+	  case 200 => Right(new JMSDestinationRuntime(
+					    response.value("Name").asInstanceOf[String],
+					    response.value("Parent"),
+					    response.value("Paused").asInstanceOf[Boolean],
+					    response.value("State").asInstanceOf[String],
+					    response.value("DestinationType").asInstanceOf[String],
+					    response.value("DestinationInfo"),
+					    ConvertToMessages(response),
+					    ConvertToBytes(response),
+					    ConvertToConsumers(response),
+					    ConvertToConsumption(response),
+					    ConvertToInsertion(response),
+					    ConvertToProduction(response)
+					))
+	  case _ => Left("No correct type")
 	}
 	
-	implicit def readResponseToJMSDestinationRuntime(response: ReadResponse): JMSDestinationRuntime = ConvertToJMSDestinationRuntime(response)
+	implicit def readResponseToJMSDestinationRuntime(response: ReadResponse): Either[String, JMSDestinationRuntime] = ConvertToJMSDestinationRuntime(response)
 }
 
 class WeblogicClient(host: String, port: Int) extends Client(host, port) {

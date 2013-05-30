@@ -29,7 +29,7 @@ class WeblogicSpec extends FlatSpec {
 	          "ProductionPausedState" -> "Production-Enabled", 
 	          "ConsumersHighCount" -> BigInt(2), 
 	          "MessagesMovedCurrentCount" -> BigInt(0), 
-	          "ConsumersCurrentCount" -> BigInt(0), 
+	          "ConsumersCurrentCount" -> BigInt(1), 
 	          "Paused" -> false, 
 	          "DestinationType" -> "Queue", 
 	          "InsertionPaused" -> false, 
@@ -52,9 +52,12 @@ class WeblogicSpec extends FlatSpec {
               "BytesCurrentCount" -> BigInt(100), 
               "Type" -> "JMSDestinationRuntime"))
   
-  	"A ReadResponse" should "converted to a JMSDestinationRuntime" in {
-	  val destinationRuntime = ConvertToJMSDestinationRuntime(readResponse)
-      
+    def assertError(error: String) {
+      println(error)
+      fail(error)
+    }
+    
+    def assertJMSDestinationRuntime(destinationRuntime: JMSDestinationRuntime) {
       assert(destinationRuntime.name == "jms-module!yellowfire.jms.queue.in.accounting")
       assert(destinationRuntime.destinationType == "Queue")
       assert(destinationRuntime.paused == false)
@@ -86,6 +89,31 @@ class WeblogicSpec extends FlatSpec {
 	  assert(consumers.current == 1)
 	  assert(consumers.high == 2)
 	  assert(consumers.total == 15)
+    }
+    
+  	"A ReadResponse" should "converted to a JMSDestinationRuntime" in {
+	  val result:Either[String, JMSDestinationRuntime] = ConvertToJMSDestinationRuntime(readResponse)
+      
+	  result.fold (assertError _, assertJMSDestinationRuntime _)  
+  }
+    
+  "A client" should "be able to retrieve the JMS destinations from Weblogic" in {
+	  import jolokia.weblogic._
+	  import dispatch._
+	  import Defaults._
 	  
+	  val http = new Http
+	  val client = new WeblogicClient("localhost", 7001)
+	  
+	  val timestamp = new java.util.Date
+	  val response = client.searchDestinations
+	  
+	  assert(response.status == 200, "status should be 200")
+	  
+	  assert(response.timestamp.getDay == timestamp.getDay)
+	  assert(response.timestamp.getMonth == timestamp.getMonth)
+	  assert(response.timestamp.getYear == timestamp.getYear)
+	  assert(response.timestamp.getHours == timestamp.getHours)
+	  assert(response.timestamp.getMinutes == timestamp.getMinutes)
   }
 }
