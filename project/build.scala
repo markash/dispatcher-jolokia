@@ -7,7 +7,7 @@ object Build extends Build {
 
 	lazy val buildSettings = Defaults.defaultSettings ++ Seq(
 		dispatchVersion := "0.10.0",
-		version <<= dispatchVersion { dv => "dispatch" + dv + "_0.1.0-SNAPSHOT"},
+		version := "0.1.0",     //version <<= dispatchVersion { dv => "dispatch" + dv + "_0.1.0-SNAPSHOT"},
 		organization := "za.co.yellowfire",
 		scalaVersion := "2.10.0",
 		libraryDependencies <++= (dispatchVersion) { (dv) => Seq(
