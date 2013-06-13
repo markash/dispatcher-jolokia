@@ -2,6 +2,8 @@ package jolokia.weblogic.test
 
 
 import org.scalatest.FlatSpec
+import jolokia.weblogic.WeblogicClient
+import jolokia.weblogic.JMSDestinationRuntime
 
 class WeblogicSpec extends FlatSpec {
     import jolokia.response._

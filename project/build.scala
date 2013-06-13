@@ -20,7 +20,7 @@ object Build extends Build {
 			"org.scalatest" % "scalatest_2.10" % "2.0.M5b" % "test"
 		),
 		crossScalaVersions := Seq("2.10.1"),
-		resolvers += "repo-prox" at "http://vt01ecs02.tb01.test.jse.co.za:9092/nexus/content/groups/public"
+		resolvers += "repo-prox" at "http://localhost:9092/nexus/content/groups/public"
 
 	)
 

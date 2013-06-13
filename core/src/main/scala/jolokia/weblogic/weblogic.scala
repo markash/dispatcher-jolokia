@@ -119,15 +119,17 @@ object Application {
 		val client = new WeblogicClient("localhost", 7001)
 		val searchResponse = client.searchDestinations
 
-		val objectName = searchResponse.value(0)
-		val readResponse = client.read(objectName)
-
-		println(readResponse)
+		searchResponse.status match {
+		  case 404 => println("Jolokia service not found at http://localhost:7001")
+		  case _ => val objectName = searchResponse.value(0)
+					val readResponse = client.read(objectName)
+					println(readResponse)
+					val messageStats = ConvertToJMSDestinationRuntime(readResponse)
+					messageStats
+		}
 		
-		val messageStats = ConvertToJMSDestinationRuntime(readResponse)
-
-		messageStats
 	}
+	
 	def json(args: Array[String]) {
 		val client = new WeblogicClient("localhost", 7001)
 		val searchResponse = client.searchDestinations
